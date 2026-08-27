@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="An architectural field atlas for a scalable modular-monolith commerce platform.">
+  <title>Commerce, With Seams — Architecture Field Atlas</title>
+  <style>
+    :root{
+      --ink:#dce8e5;--muted:#8da29d;--night:#07110f;--panel:#0c1a17;--panel2:#10231f;
+      --line:#24413a;--mint:#75f2c2;--amber:#ffc857;--coral:#ff766e;--cyan:#62d9ff;
+      --violet:#b7a1ff;--shadow:0 24px 80px #0009;--r:22px;--mono:"Cascadia Mono","SFMono-Regular",Consolas,monospace;
+    }
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--night);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.55;overflow-x:hidden}
+    body:before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at 80% 5%,#21544250,transparent 35%),radial-gradient(circle at 10% 55%,#183d4c30,transparent 30%),linear-gradient(#ffffff08 1px,transparent 1px),linear-gradient(90deg,#ffffff08 1px,transparent 1px);background-size:auto,auto,48px 48px,48px 48px;mask-image:linear-gradient(to bottom,#000,transparent 85%);z-index:-1}
+    a{color:inherit}button{font:inherit}.shell{width:min(1180px,calc(100% - 32px));margin:auto}.eyebrow{font:700 11px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--mint)}
+    .rail{position:fixed;left:20px;top:50%;transform:translateY(-50%);z-index:10;display:grid;gap:9px}.rail a{width:9px;height:9px;border:1px solid var(--muted);border-radius:50%;background:var(--night);font-size:0;transition:.25s}.rail a:hover,.rail a.active{background:var(--mint);border-color:var(--mint);box-shadow:0 0 18px var(--mint)}
+    .hero{min-height:100svh;display:grid;align-items:center;padding:80px 0 48px;position:relative}.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}.kicker{display:flex;align-items:center;gap:12px;color:var(--muted);font:600 12px var(--mono)}.kicker:before{content:"";width:44px;height:1px;background:var(--mint)}
+    h1{font-size:clamp(52px,8vw,108px);line-height:.88;letter-spacing:-.065em;margin:26px 0}.hero h1 em{display:block;color:transparent;-webkit-text-stroke:1.5px var(--mint);font-style:normal}.lede{font-size:clamp(18px,2vw,24px);max-width:670px;color:#b8c9c5}.thesis{border-left:2px solid var(--amber);padding:2px 0 2px 20px;margin-top:34px;color:var(--ink);max-width:640px}.thesis strong{color:var(--amber)}
+    .city{aspect-ratio:1;position:relative;isolation:isolate}.orbit{position:absolute;border:1px solid #75f2c233;border-radius:50%;inset:10%;animation:spin 50s linear infinite}.orbit:nth-child(2){inset:24%;animation-direction:reverse;animation-duration:34s;border-style:dashed}.core{position:absolute;inset:37%;display:grid;place-items:center;text-align:center;border-radius:50%;background:var(--mint);color:#07110f;font:900 12px/1.2 var(--mono);box-shadow:0 0 70px #75f2c266;z-index:3}.node{position:absolute;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#0c1a17e8;color:var(--muted);font:700 10px var(--mono);box-shadow:var(--shadow)}.node:after{content:"";position:absolute;width:5px;height:5px;border-radius:50%;background:var(--c,var(--mint));box-shadow:0 0 12px var(--c,var(--mint))}.n1{left:5%;top:18%;--c:var(--cyan)}.n2{right:2%;top:20%;--c:var(--amber)}.n3{left:0;bottom:25%;--c:var(--coral)}.n4{right:4%;bottom:17%;--c:var(--violet)}.n5{left:37%;top:0}.n6{left:34%;bottom:2%}.n1:after,.n3:after{right:-3px;top:45%}.n2:after,.n4:after{left:-3px;top:45%}.n5:after{bottom:-3px;left:48%}.n6:after{top:-3px;left:48%}@keyframes spin{to{transform:rotate(360deg)}}
+    .scroll{position:absolute;bottom:28px;left:50%;font:10px var(--mono);color:var(--muted);letter-spacing:.16em;writing-mode:vertical-rl}.scroll:after{content:"";display:block;width:1px;height:55px;background:linear-gradient(var(--mint),transparent);margin:12px auto}
+    section{padding:110px 0;scroll-margin-top:20px}.section-head{display:grid;grid-template-columns:80px 1fr minmax(180px,360px);gap:24px;align-items:end;margin-bottom:54px}.num{font:700 12px var(--mono);color:var(--mint)}h2{font-size:clamp(36px,6vw,70px);line-height:.95;letter-spacing:-.045em;margin:0}.section-head p{color:var(--muted);margin:0}
+    .pressure{background:linear-gradient(180deg,transparent,#0b1d1922,transparent)}.map{display:grid;grid-template-columns:repeat(12,1fr);grid-auto-rows:76px;gap:10px}.district{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:16px;padding:16px;background:linear-gradient(145deg,#10241f,#0a1513);transition:.25s}.district:hover{transform:translateY(-3px);border-color:var(--c);box-shadow:0 16px 50px #0008}.district h3{margin:0 0 6px;font-size:16px}.district p{margin:0;color:var(--muted);font-size:12px}.district:before{content:"";position:absolute;right:-18px;bottom:-28px;width:80px;height:80px;border-radius:50%;background:var(--c);filter:blur(32px);opacity:.18}.d-product{grid-column:span 4;grid-row:span 2;--c:var(--cyan)}.d-offer{grid-column:span 3;--c:var(--amber)}.d-price{grid-column:span 3;--c:var(--violet)}.d-cart{grid-column:span 2;--c:var(--mint)}.d-order{grid-column:span 5;grid-row:span 2;--c:var(--coral)}.d-inventory{grid-column:span 3;grid-row:span 2;--c:var(--amber)}.d-payment{grid-column:span 4;--c:var(--cyan)}.d-ledger{grid-column:span 4;--c:var(--mint)}.d-fulfill{grid-column:span 4;--c:var(--violet)}.d-search{grid-column:span 2;--c:var(--cyan)}.d-returns{grid-column:span 3;--c:var(--coral)}.d-merchant{grid-column:span 3;--c:var(--amber)}
+    .seams{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}.seam{padding:20px;border-left:2px solid var(--c);background:#ffffff04}.seam span{font:700 10px var(--mono);color:var(--c);text-transform:uppercase;letter-spacing:.13em}.seam strong{display:block;font-size:19px;margin:7px 0}.seam p{color:var(--muted);font-size:13px;margin:0}.seam:nth-child(1){--c:var(--cyan)}.seam:nth-child(2){--c:var(--coral)}.seam:nth-child(3){--c:var(--mint)}
+    .fractals{position:relative}.rings{display:grid;gap:18px}.capability{display:grid;grid-template-columns:140px repeat(3,1fr);gap:2px;align-items:stretch}.cap-name{display:flex;align-items:center;font:800 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink)}.stage{padding:18px 20px;background:#0d1c19;border-top:1px solid var(--line);border-bottom:1px solid var(--line);position:relative}.stage:nth-child(2){border-left:3px solid var(--mint)}.stage:nth-child(3){background:#10231f}.stage:nth-child(4){background:#12201f;border-right:1px solid var(--line)}.stage b{display:block;color:var(--c);font:700 10px var(--mono);margin-bottom:7px;letter-spacing:.12em}.stage small{color:var(--muted)}.capability:nth-child(1) .stage{--c:var(--cyan)}.capability:nth-child(2) .stage{--c:var(--amber)}.capability:nth-child(3) .stage{--c:var(--violet)}.capability:nth-child(4) .stage{--c:var(--coral)}.capability:nth-child(5) .stage{--c:var(--mint)}
+    .auction{background:#0b1513}.auction-floor{display:grid;grid-template-columns:1fr 1fr;gap:28px}.lots{display:grid;gap:10px}.lot{display:grid;grid-template-columns:90px 1fr auto;gap:16px;align-items:center;padding:14px 16px;border:1px solid var(--line);background:var(--panel);border-radius:12px}.lot .seal{font:900 10px var(--mono);text-align:center;border:1px solid var(--c);color:var(--c);border-radius:50%;aspect-ratio:1;display:grid;place-items:center;transform:rotate(-7deg)}.lot b{font-size:14px}.lot p{margin:3px 0 0;color:var(--muted);font-size:12px}.lot .cost{font:700 10px var(--mono);color:var(--amber)}.lot:nth-child(1){--c:var(--coral)}.lot:nth-child(2){--c:var(--amber)}.lot:nth-child(3){--c:var(--violet)}.lot:nth-child(4){--c:var(--mint)}.lot:nth-child(5){--c:var(--cyan)}
+    .rules{border:1px solid var(--amber);border-radius:var(--r);padding:28px;background:radial-gradient(circle at 100% 0,#ffc8571a,transparent 40%),var(--panel)}.rules h3{font-size:28px;line-height:1;margin:0 0 22px}.rule{display:grid;grid-template-columns:28px 1fr;gap:12px;margin:16px 0;color:#bbcbc7;font-size:14px}.rule i{font:700 11px var(--mono);color:var(--amber);font-style:normal}.rule strong{color:var(--ink)}
+    .triggers .section-head{margin-bottom:35px}.console{border:1px solid #315249;border-radius:18px;background:#07100e;box-shadow:var(--shadow);overflow:hidden}.console-top{height:42px;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 16px;gap:7px;font:10px var(--mono);color:var(--muted)}.lamp{width:8px;height:8px;border-radius:50%;background:var(--coral)}.lamp:nth-child(2){background:var(--amber)}.lamp:nth-child(3){background:var(--mint)}.console-top span:last-child{margin-left:auto}.gauges{padding:26px;display:grid;grid-template-columns:repeat(2,1fr);gap:22px 36px}.gauge .meta{display:flex;justify-content:space-between;font:700 11px var(--mono);margin-bottom:9px}.gauge .meta span:last-child{color:var(--c)}.track{height:7px;background:#19312b;border-radius:9px;overflow:hidden}.fill{height:100%;width:var(--w);background:linear-gradient(90deg,var(--c),#fff);box-shadow:0 0 12px var(--c);transform-origin:left;animation:grow 1.4s ease both}.gauge p{font-size:12px;color:var(--muted);margin:8px 0 0}.gauge:nth-child(1){--c:var(--cyan);--w:30%}.gauge:nth-child(2){--c:var(--coral);--w:72%}.gauge:nth-child(3){--c:var(--amber);--w:58%}.gauge:nth-child(4){--c:var(--violet);--w:68%}.gauge:nth-child(5){--c:var(--mint);--w:82%}.gauge:nth-child(6){--c:var(--cyan);--w:64%}@keyframes grow{from{transform:scaleX(0)}}
+    .playbook{display:grid;grid-template-columns:repeat(4,1fr);margin-top:28px;counter-reset:step}.playbook div{position:relative;padding:28px 20px 18px;border-top:1px solid var(--mint);color:var(--muted);font-size:12px}.playbook div:before{counter-increment:step;content:"0" counter(step);position:absolute;top:-13px;left:18px;background:var(--night);padding:2px 8px;color:var(--mint);font:700 10px var(--mono)}.playbook strong{color:var(--ink);display:block;font-size:15px;margin-bottom:5px}.scorecard{margin-top:22px;text-align:center;color:var(--muted);font:11px var(--mono);letter-spacing:.05em}.scorecard b{color:var(--amber)}
+    .counterfactuals{overflow:hidden}.portals{display:flex;gap:18px;overflow-x:auto;padding:8px max(0px,calc((100vw - 1180px)/2)) 30px;scroll-snap-type:x mandatory;scrollbar-color:var(--violet) transparent}.portal{flex:0 0 min(390px,82vw);min-height:320px;scroll-snap-align:center;border:1px solid var(--line);border-radius:45% 45% 18px 18px;padding:34px 28px 24px;display:flex;flex-direction:column;justify-content:flex-end;position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 24%,var(--glow),transparent 38%),linear-gradient(180deg,#13231f,#0b1614)}.portal:before{content:"WHAT IF";position:absolute;top:38px;left:50%;transform:translateX(-50%);font:900 10px var(--mono);letter-spacing:.3em;color:var(--c)}.portal:after{content:"";position:absolute;inset:28px 28px 48%;border:1px solid var(--c);border-radius:50% 50% 8px 8px;box-shadow:inset 0 0 30px var(--glow),0 0 30px var(--glow)}.portal h3{font-size:24px;line-height:1.08;margin:0 0 10px;position:relative;z-index:2}.portal p{color:var(--muted);font-size:13px;margin:0;position:relative;z-index:2}.portal:nth-child(1){--c:var(--amber);--glow:#ffc85728}.portal:nth-child(2){--c:var(--cyan);--glow:#62d9ff28}.portal:nth-child(3){--c:var(--violet);--glow:#b7a1ff28}.portal:nth-child(4){--c:var(--coral);--glow:#ff766e28}.portal:nth-child(5){--c:var(--mint);--glow:#75f2c228}.portal:nth-child(6){--c:var(--cyan);--glow:#62d9ff28}
+    .climax{padding:150px 0 120px;background:radial-gradient(circle at 50% 44%,#75f2c21c,transparent 34%);position:relative}.climax:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent 49.9%,#75f2c226 50%,transparent 50.1%);pointer-events:none}.climax .section-head{grid-template-columns:80px 1fr}.climax .section-head p{grid-column:2;max-width:720px;font-size:20px;color:#bed0cc}.spine{position:relative;width:min(920px,100%);margin:80px auto 0;display:grid;grid-template-columns:1fr 90px 1fr;gap:26px}.vertebrae{grid-column:2;grid-row:1/8;display:flex;flex-direction:column;justify-content:space-around;align-items:center;position:relative}.vertebrae:before{content:"";position:absolute;width:3px;inset:0 auto;background:linear-gradient(var(--cyan),var(--mint),var(--amber));box-shadow:0 0 30px var(--mint)}.vertebrae i{width:18px;height:18px;background:var(--night);border:3px solid var(--mint);border-radius:50%;z-index:1;box-shadow:0 0 20px var(--mint)}.principle{padding:18px 20px;border:1px solid var(--line);background:#0c1916d9;border-radius:14px;position:relative}.principle:nth-of-type(odd){grid-column:1;text-align:right}.principle:nth-of-type(even){grid-column:3}.principle b{display:block;color:var(--mint);font:700 10px var(--mono);letter-spacing:.12em;text-transform:uppercase}.principle strong{display:block;font-size:18px;margin:5px 0}.principle p{margin:0;color:var(--muted);font-size:12px}.north-star{margin:90px auto 0;max-width:850px;text-align:center}.north-star .mark{width:80px;height:80px;margin:auto;border:1px solid var(--mint);transform:rotate(45deg);display:grid;place-items:center;box-shadow:0 0 50px #75f2c244}.north-star .mark span{transform:rotate(-45deg);font:900 11px var(--mono);color:var(--mint)}.north-star h3{font-size:clamp(32px,5vw,58px);line-height:1;margin:38px 0 20px;letter-spacing:-.04em}.north-star p{font-size:19px;color:#b8cac5}.formula{margin-top:36px;padding:18px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font:700 clamp(12px,2vw,16px) var(--mono);color:var(--amber)}
+    .closing{padding:52px 0 80px;border-top:1px solid var(--line)}.closing-grid{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:end}.closing h2{max-width:720px}.stamp{font:700 10px var(--mono);color:var(--muted);text-align:right}.stamp b{display:block;color:var(--mint);margin-bottom:5px}.reveal{opacity:0;transform:translateY(18px);transition:.7s ease}.reveal.seen{opacity:1;transform:none}
+    @media(max-width:900px){.rail{display:none}.hero-grid{grid-template-columns:1fr}.city{max-width:540px;margin:auto;width:100%}.section-head{grid-template-columns:48px 1fr}.section-head p{grid-column:2}.map{grid-auto-rows:auto}.district{grid-column:span 6!important;grid-row:span 1!important;min-height:140px}.capability{grid-template-columns:1fr}.cap-name{padding-top:18px}.auction-floor{grid-template-columns:1fr}.gauges{grid-template-columns:1fr}.playbook{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:600px){.shell{width:min(100% - 22px,1180px)}section{padding:78px 0}.hero{padding-top:50px}.hero-grid{gap:16px}.city{transform:scale(.92)}.district{grid-column:span 12!important}.seams{grid-template-columns:1fr}.lot{grid-template-columns:64px 1fr}.lot .cost{display:none}.playbook{grid-template-columns:1fr}.spine{grid-template-columns:1fr 30px}.vertebrae{grid-column:2}.principle,.principle:nth-of-type(odd),.principle:nth-of-type(even){grid-column:1!important;text-align:left}.closing-grid{grid-template-columns:1fr}.stamp{text-align:left}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.orbit,.fill{animation:none}.reveal{opacity:1;transform:none;transition:none}}
+  </style>
+</head>
+<body>
+  <nav class="rail" aria-label="Atlas sections">
+    <a href="#origin" aria-label="Origin"></a><a href="#pressure" aria-label="Domain Pressure Map"></a><a href="#fractals" aria-label="Capability Fractals"></a><a href="#auction" aria-label="Invariant Auction"></a><a href="#triggers" aria-label="Strangler Trigger Cards"></a><a href="#counterfactuals" aria-label="Commerce Counterfactuals"></a><a href="#synthesis" aria-label="Synthesis"></a>
+  </nav>
+
+  <header class="hero" id="origin">
+    <div class="shell hero-grid">
+      <div>
+        <div class="kicker">Architecture field atlas · 25 Aug 2026</div>
+        <h1>Commerce,<em>with seams.</em></h1>
+        <p class="lede">A modular-monolith imagined as a living city: each district owns a truth, every bridge is explicit, and no neighborhood becomes a service until the evidence pays for the journey.</p>
+        <p class="thesis"><strong>North star:</strong> optimize for explicit ownership and evolutionary seams—not for maximizing the initial count of modules or services.</p>
+      </div>
+      <div class="city" aria-label="Orbiting commerce domains">
+        <div class="orbit"></div><div class="orbit"></div><div class="core">COMMERCE<br>KERNEL</div>
+        <div class="node n1">PRODUCT ↔ OFFER</div><div class="node n2">PRICE → QUOTE</div><div class="node n3">PAYMENT ≠ LEDGER</div><div class="node n4">ORDER ≠ FULFILLMENT</div><div class="node n5">INVENTORY</div><div class="node n6">OUTBOX EVENTS</div>
+      </div>
+    </div>
+    <div class="scroll">ENTER THE ATLAS</div>
+  </header>
+
+  <main>
+    <section class="pressure" id="pressure">
+      <div class="shell">
+        <div class="section-head reveal"><div class="num">01 / 05</div><h2>Domain Pressure Map</h2><p>Stress load, failure, and ownership disputes until robust boundaries show themselves.</p></div>
+        <div class="map reveal">
+          <article class="district d-product"><h3>Product</h3><p>Canonical identity, attributes, merges, splits, and supersession. Never seller price or stock.</p></article>
+          <article class="district d-offer"><h3>Offer</h3><p>Seller-specific price, condition, availability, and SLA.</p></article>
+          <article class="district d-price"><h3>Pricing</h3><p>Versioned quotes with deterministic explanation trees.</p></article>
+          <article class="district d-cart"><h3>Cart</h3><p>Revocable intent; soft references only.</p></article>
+          <article class="district d-order"><h3>Order</h3><p>The immutable commercial agreement: snapshot product, seller, price, tax, promise, and policy at purchase time.</p></article>
+          <article class="district d-inventory"><h3>Inventory</h3><p>Stock positions, reservations, adjustments, and the no-oversell invariant.</p></article>
+          <article class="district d-payment"><h3>Payment</h3><p>Gateway attempts, authorization, routing, and retries.</p></article>
+          <article class="district d-ledger"><h3>Financial Ledger</h3><p>Append-only monetary truth and conservation.</p></article>
+          <article class="district d-fulfill"><h3>Fulfillment</h3><p>Custody, grouping, pick-pack tasks, and value delivery.</p></article>
+          <article class="district d-search"><h3>Search</h3><p>Disposable, reconstructible.</p></article>
+          <article class="district d-returns"><h3>Returns</h3><p>Eligibility, RMA, disposition, audited exception.</p></article>
+          <article class="district d-merchant"><h3>Merchant</h3><p>KYC, stores, staff, selling permissions.</p></article>
+        </div>
+        <div class="seams reveal">
+          <article class="seam"><span>Boundary split 01</span><strong>Product ≠ Offer</strong><p>Canonical product truth can evolve without importing marketplace-specific assumptions.</p></article>
+          <article class="seam"><span>Boundary split 02</span><strong>Order ≠ Fulfillment</strong><p>The agreement remains stable while physical—or digital—delivery changes underneath it.</p></article>
+          <article class="seam"><span>Boundary split 03</span><strong>Payment ≠ Ledger</strong><p>Gateway status describes execution; postings prove balances and liabilities.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="fractals" id="fractals">
+      <div class="shell">
+        <div class="section-head reveal"><div class="num">02 / 05</div><h2>Capability Fractals</h2><p>Each capability keeps the same identity while its implementation deepens from MVP to platform maturity.</p></div>
+        <div class="rings reveal">
+          <div class="capability"><div class="cap-name">Catalog</div><div class="stage"><b>MVP · SEED</b><small>Normalized product model and PostgreSQL filters</small></div><div class="stage"><b>SCALE · RING</b><small>Denormalized projections</small></div><div class="stage"><b>PLATFORM · CANOPY</b><small>Seller- and region-specific views</small></div></div>
+          <div class="capability"><div class="cap-name">Inventory</div><div class="stage"><b>MVP · SEED</b><small>On-hand minus reserved per location</small></div><div class="stage"><b>SCALE · RING</b><small>Allocation policies</small></div><div class="stage"><b>PLATFORM · CANOPY</b><small>Network ATP and safety-stock optimization</small></div></div>
+          <div class="capability"><div class="cap-name">Checkout</div><div class="stage"><b>MVP · SEED</b><small>Synchronous orchestration + compensation</small></div><div class="stage"><b>SCALE · RING</b><small>Durable workflow state</small></div><div class="stage"><b>PLATFORM · CANOPY</b><small>Independently scalable orchestrator</small></div></div>
+          <div class="capability"><div class="cap-name">Orders</div><div class="stage"><b>MVP · SEED</b><small>State machine and timeline</small></div><div class="stage"><b>SCALE · RING</b><small>Split-order graph</small></div><div class="stage"><b>PLATFORM · CANOPY</b><small>Global partitioning, regional read models</small></div></div>
+          <div class="capability"><div class="cap-name">Integration</div><div class="stage"><b>MVP · SEED</b><small>Internal calls</small></div><div class="stage"><b>SCALE · RING</b><small>Transactional outbox and webhooks</small></div><div class="stage"><b>PLATFORM · CANOPY</b><small>Public event contracts + developer portal</small></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="auction" id="auction">
+      <div class="shell">
+        <div class="section-head reveal"><div class="num">03 / 05</div><h2>Invariant Auction</h2><p>Modules bid for rules and data. The winning bid is the one whose consistency benefit exceeds its coupling cost.</p></div>
+        <div class="auction-floor reveal">
+          <div class="lots">
+            <article class="lot"><div class="seal">ORDER</div><div><b>Purchased-line snapshots</b><p>Auditability outweighs duplicated catalog fields.</p></div><div class="cost">SOLD</div></article>
+            <article class="lot"><div class="seal">STOCK</div><div><b>No oversell</b><p>Checkout may request availability, never manufacture it.</p></div><div class="cost">SOLD</div></article>
+            <article class="lot"><div class="seal">PRICE</div><div><b>Quote determinism</b><p>Promotion proposes; Pricing orders and explains.</p></div><div class="cost">SOLD</div></article>
+            <article class="lot"><div class="seal">LEDGER</div><div><b>Money conservation</b><p>Payment status is not proof of balances.</p></div><div class="cost">SOLD</div></article>
+            <article class="lot"><div class="seal">RETURN</div><div><b>Eligibility</b><p>Care overrides via an explicit audited exception.</p></div><div class="cost">SOLD</div></article>
+          </div>
+          <aside class="rules">
+            <div class="eyebrow">Auction house rules</div>
+            <h3>Consistency becomes a contract.</h3>
+            <div class="rule"><i>01</i><div><strong>One owner per invariant.</strong> No shared-domain dumping ground, no cross-module ORM relationships.</div></div>
+            <div class="rule"><i>02</i><div><strong>Every copy carries terms.</strong> Declare freshness tolerance and a reconciliation owner.</div></div>
+            <div class="rule"><i>03</i><div><strong>Every override leaves evidence.</strong> Actor, reason, evidence, and compensating path.</div></div>
+            <div class="rule"><i>04</i><div><strong>Transactions live in named islands.</strong> Order + Outbox is deliberate; convenience is not.</div></div>
+            <div class="rule"><i>05</i><div><strong>State machines publish their edges.</strong> Terminal states, invalid transitions, timeouts, and idempotency keys.</div></div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="triggers" id="triggers">
+      <div class="shell">
+        <div class="section-head reveal"><div class="num">04 / 05</div><h2>Strangler Trigger Cards</h2><p>A service is not a trophy. Extraction is an economic move justified by operational evidence.</p></div>
+        <div class="console reveal">
+          <div class="console-top"><i class="lamp"></i><i class="lamp"></i><i class="lamp"></i><span>extraction-readiness.monitor</span><span>LIVE EVIDENCE</span></div>
+          <div class="gauges">
+            <div class="gauge"><div class="meta"><span>SEARCH</span><span>30% RESOURCE SHARE</span></div><div class="track"><div class="fill"></div></div><p>Extract at sustained independent indexing/query pressure or a divergent release cadence.</p></div>
+            <div class="gauge"><div class="meta"><span>PAYMENT</span><span>SECURITY BOUNDARY</span></div><div class="track"><div class="fill"></div></div><p>PCI isolation, regional routing, or provider reliability demands separate containment.</p></div>
+            <div class="gauge"><div class="meta"><span>INVENTORY</span><span>CONTENTION / SLO</span></div><div class="track"><div class="fill"></div></div><p>Reservation contention breaches latency goals or stock spans multiple channels.</p></div>
+            <div class="gauge"><div class="meta"><span>CHECKOUT</span><span>DURABLE RETRIES</span></div><div class="track"><div class="fill"></div></div><p>Compensation must survive beyond the monolith process lifecycle.</p></div>
+            <div class="gauge"><div class="meta"><span>SETTLEMENT</span><span>CONTROL ISOLATION</span></div><div class="track"><div class="fill"></div></div><p>Payout windows and reconciliation batches need independent failure containment.</p></div>
+            <div class="gauge"><div class="meta"><span>ORDER</span><span>NO DEFAULT EXIT</span></div><div class="track"><div class="fill"></div></div><p>Centrality alone is not a reason. Demand ownership, throughput, or regional evidence.</p></div>
+          </div>
+        </div>
+        <div class="playbook reveal"><div><strong>Mirror reads</strong>Run new and old paths together; compare outputs.</div><div><strong>Shadow writes</strong>Prove event contracts and idempotency before authority moves.</div><div><strong>Switch authority</strong>Route through the internal gateway interface.</div><div><strong>Keep reversal</strong>Retain a compatible in-process adapter until production proves the split.</div></div>
+        <p class="scorecard reveal">Success metric: <b>reduced blast radius or improved SLO economics</b> — never service count.</p>
+      </div>
+    </section>
+
+    <section class="counterfactuals" id="counterfactuals">
+      <div class="shell"><div class="section-head reveal"><div class="num">05 / 05</div><h2>Commerce Counterfactuals</h2><p>Invert the foundational assumptions. The neglected models appear in the doorway.</p></div></div>
+      <div class="portals reveal" aria-label="Horizontally scrolling counterfactual cards">
+        <article class="portal"><h3>Inventory is unknowable.</h3><p>Preorder, made-to-order, and dropship need promise confidence—not binary availability.</p></article>
+        <article class="portal"><h3>Products are not physical.</h3><p>Fulfillment becomes delivery of value: shipment, entitlement, subscription, booking, or service.</p></article>
+        <article class="portal"><h3>Price is negotiated later.</h3><p>Quote becomes a durable versioned aggregate with expiry and explicit acceptance.</p></article>
+        <article class="portal"><h3>Payment arrives first.</h3><p>Bank transfer reconciliation reveals the suspense account and claim workflow.</p></article>
+        <article class="portal"><h3>The customer is an organization.</h3><p>Buyers, approvers, budgets, purchase orders, and tax exemptions enter without rewriting identity.</p></article>
+        <article class="portal"><h3>AI operates the back office.</h3><p>Every action needs typed commands, previews, policy checks, idempotency, and reversible compensation.</p></article>
+      </div>
+    </section>
+
+    <section class="climax" id="synthesis">
+      <div class="shell">
+        <div class="section-head reveal"><div class="num">SYNTHESIS</div><h2>The architecture spine</h2><p>Five lenses converge on one design: a commerce kernel plus replaceable capability modules, held together by public contracts—not shared internals.</p></div>
+        <div class="spine reveal">
+          <div class="vertebrae" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <article class="principle"><b>Ownership</b><strong>Schema per module</strong><p>Each externally visible identifier and business invariant has one home.</p></article>
+          <article class="principle"><b>Interaction</b><strong>Ports + adapters</strong><p>Internal commands and queries can later cross a network without changing callers.</p></article>
+          <article class="principle"><b>Propagation</b><strong>Transactional outbox</strong><p>Domain events cross seams; consumers are idempotent and projections reconstructible.</p></article>
+          <article class="principle"><b>Governance</b><strong>Dependency fitness tests</strong><p>Forbidden coupling fails the build; event compatibility becomes a gate.</p></article>
+          <article class="principle"><b>Consistency</b><strong>Explicit islands</strong><p>Order, inventory, and money keep the models their truths actually require.</p></article>
+          <article class="principle"><b>Evolution</b><strong>Maturity paths + trigger cards</strong><p>Every capability knows how it may grow and what evidence justifies extraction.</p></article>
+          <article class="principle"><b>Economics</b><strong>Extraction scorecards</strong><p>Clean API, isolated data, event contracts, tests, projections, and a reversal window.</p></article>
+        </div>
+        <div class="north-star reveal">
+          <div class="mark"><span>TRUE<br>NORTH</span></div>
+          <h3>Deliver value through channels.<br>Do not worship implementations.</h3>
+          <p>The future-proof abstraction spans physical goods, digital entitlements, services, subscriptions, and bookings—without forcing them into one fulfillment machine.</p>
+          <div class="formula">BOUNDARIES × EVIDENCE × REVERSIBILITY = EVOLUTION WITHOUT REWRITE</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="closing">
+    <div class="shell closing-grid">
+      <div><div class="eyebrow">Recommended direction</div><h2>Build the monolith to last.<br>Give it seams to leave.</h2></div>
+      <div class="stamp"><b>MODULAR COMMERCE ATLAS</b>Autonomous brainstorming synthesis<br>25 August 2026</div>
+    </div>
+  </footer>
+
+  <script>
+    (()=>{
+      const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const reveals=[...document.querySelectorAll('.reveal')];
+      if(reduced){reveals.forEach(x=>x.classList.add('seen'));return}
+      const show=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('seen');show.unobserve(e.target)}}),{threshold:.12});
+      reveals.forEach(x=>show.observe(x));
+      const links=[...document.querySelectorAll('.rail a')], sections=links.map(a=>document.querySelector(a.getAttribute('href')));
+      const nav=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){links.forEach(a=>a.classList.remove('active'));const i=sections.indexOf(e.target);if(i>-1)links[i].classList.add('active')}}),{rootMargin:'-42% 0px -48% 0px'});
+      sections.forEach(s=>s&&nav.observe(s));
+    })();
+  </script>
+</body>
+</html>
