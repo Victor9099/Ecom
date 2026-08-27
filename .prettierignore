@@ -1,0 +1,36 @@
+# External / non-owned scope — never formatted by this workspace.
+.beads/
+.impeccable/
+.orchestration/
+_bmad-output/
+design-system/
+
+# Git internals (worktree gitfile + any git dir).
+.git
+.git/
+
+# Generated, dependency, and cache trees.
+node_modules/
+.next/
+.turbo/
+dist/
+coverage/
+generated/
+
+# Lockfiles and tooling that must remain byte-stable.
+pnpm-lock.yaml
+
+# Prose that is authored by hand rather than by Prettier.
+**/*.md
+
+# Environment and dotfiles with no Prettier parser.
+.env
+.env.*
+.nvmrc
+.npmrc
+
+# Empty directory placeholders.
+**/.gitkeep
+
+# Next.js auto-generated type reference file (never edited, regenerated on build).
+**/next-env.d.ts

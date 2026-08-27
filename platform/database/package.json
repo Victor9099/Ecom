@@ -1,0 +1,23 @@
+{
+  "name": "@ecom/platform-database",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Platform database package: Prisma schema (datasource + generator only), baseline migration, and generated client.",
+  "scripts": {
+    "build": "prisma generate",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "generate": "prisma generate",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "prisma": "7.10.0",
+    "typescript": "6.0.3"
+  }
+}

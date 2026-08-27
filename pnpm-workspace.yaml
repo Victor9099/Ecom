@@ -1,0 +1,21 @@
+# Ecom — pnpm workspace
+# Workspace globs are locked to the Structural Seed in ARCHITECTURE-SPINE.md.
+packages:
+  - apps/*
+  - modules/*
+  - platform/*
+  - packages/*
+  - tests/*
+
+# pnpm 11 build-script control (`allowBuilds` boolean map).
+# - esbuild: run its postinstall so vitest/vite/tsx have a verified platform binary.
+# - prisma / @prisma/engines: their install scripts are NOT required — Prisma 7
+#   ships its schema/query engines as WASM inside the package and `prisma generate`
+#   works without a postinstall. No binary download, no external communication.
+# - @scarf/scarf: opt-in telemetry only (transitive via swagger-ui-dist); deny so
+#   the scaffold performs no external communication during install.
+allowBuilds:
+  esbuild: true
+  prisma: false
+  '@prisma/engines': false
+  '@scarf/scarf': false

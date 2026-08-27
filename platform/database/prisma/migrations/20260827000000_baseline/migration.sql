@@ -1,0 +1,4 @@
+-- Ecom baseline migration (Story 1.1).
+-- Intentionally empty: AC(1) forbids business tables and speculative domain
+-- entities, so no schema objects are created here. Owner-prefixed module objects
+-- are introduced by later stories under AD-2 / AD-25.

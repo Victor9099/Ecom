@@ -24,27 +24,30 @@
 # /design-system/
 
 # Package managers and dependencies
-/node_modules/
+**/node_modules/
 /.pnpm-store/
 /.yarn/
 /.pnp.*
 
+# Prisma generated client output (platform/database/generated)
+**/generated/
+
 # Framework and task caches
-/.next/
-/.turbo/
-/.cache/
-/.swc/
+**/.next/
+**/.turbo/
+**/.cache/
+**/.swc/
 /.uv-cache/
 
 # Build and test output
-/dist/
-/build/
-/out/
-/coverage/
-/.nyc_output/
-/playwright-report/
-/test-results/
-/blob-report/
+**/dist/
+**/build/
+**/out/
+**/coverage/
+**/.nyc_output/
+**/playwright-report/
+**/test-results/
+**/blob-report/
 *.tsbuildinfo
 
 # Local databases and runtime data

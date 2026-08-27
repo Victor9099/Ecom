@@ -1,0 +1,32 @@
+{
+  "name": "ecom",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Ecom — Vietnam-first single-store health-supplement commerce platform (TypeScript modular monolith).",
+  "packageManager": "pnpm@11.24.0",
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "smoke": "node ./scripts/smoke.mjs",
+    "verify": "pnpm run build && pnpm run typecheck && pnpm run lint && pnpm run test && pnpm run format:check && pnpm run smoke"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/node": "24.13.3",
+    "eslint": "9.39.5",
+    "globals": "16.4.0",
+    "prettier": "3.9.6",
+    "turbo": "2.10.12",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.68.0",
+    "vitest": "4.1.11"
+  }
+}

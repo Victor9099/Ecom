@@ -1,0 +1,14 @@
+{
+  "name": "@ecom/tests-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "API, event, and provider contract compatibility checks.",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "typescript": "6.0.3"
+  }
+}

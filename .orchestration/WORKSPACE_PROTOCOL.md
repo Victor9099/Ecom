@@ -42,12 +42,12 @@ DELIVERY_START:
 - Supervisor bootstraps one authoritative Lead; Lead uses BR/BV and delegates bounded work to Peers.
 
 TEST_COMMANDS_CURRENT_STATE:
-FAST_TEST: NOT_AVAILABLE_PRE_SCAFFOLD
-FULL_TEST: NOT_AVAILABLE_PRE_SCAFFOLD
-TYPECHECK: NOT_AVAILABLE_PRE_SCAFFOLD
-LINT: NOT_AVAILABLE_PRE_SCAFFOLD
-FORMAT_CHECK: NOT_AVAILABLE_PRE_SCAFFOLD
-INTEGRATION_TEST: NOT_AVAILABLE_PRE_SCAFFOLD
+FAST_TEST: COMMAND: pnpm test
+FULL_TEST: COMMAND: pnpm verify
+TYPECHECK: COMMAND: pnpm typecheck
+LINT: COMMAND: pnpm lint
+FORMAT_CHECK: COMMAND: pnpm format:check
+INTEGRATION_TEST: NOT_APPLICABLE: Story 1.1 AC(1) forbids business tables and speculative domain entities, so there is no database or cross-process contract to integrate; process executability is proven by the smoke step in FULL_TEST (pnpm verify). Activate as COMMAND at Story 1.2.
 
 TEST_COMMAND_ACTIVATION:
 - Story 1.1 must atomically replace every NOT_AVAILABLE_PRE_SCAFFOLD value when manifests and the lockfile land.

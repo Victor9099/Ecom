@@ -1,0 +1,6 @@
+{
+  "name": "@ecom/config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared compile/lint/test configuration (tsconfig baselines) for the Ecom monorepo."
+}
