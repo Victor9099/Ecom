@@ -101,9 +101,11 @@ export function sha256Hex(input: string): string {
 export function computeContractDigest(
   parts: ReadonlyArray<{ name: string; content: string }>,
 ): string {
+  // Stable, locale-independent byte-order sort (localeCompare varies by
+  // environment/locale and must not leak into a committed sha256).
   const canonical = parts
     .slice()
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
     .map((part) => `${part.name}\n${part.content}`)
     .join('\n---\n');
   return sha256Hex(canonical);

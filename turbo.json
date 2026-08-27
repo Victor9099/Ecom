@@ -8,14 +8,6 @@
     "typecheck": {
       "dependsOn": ["^build"],
       "outputs": []
-    },
-    "architecture:check": {
-      "cache": false,
-      "outputs": []
-    },
-    "contracts:check": {
-      "dependsOn": ["^build"],
-      "outputs": []
     }
   }
 }

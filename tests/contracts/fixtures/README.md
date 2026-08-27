@@ -23,6 +23,9 @@ tests/contracts/
    (`command` | `event` | `api`), and `consumers` (array of consumer owner names).
 2. A released version's schema + contract + fixtures digest (`history/…/v<N>.sha256`)
    is immutable. A changed digest is a breaking change and must become `v<N+1>`.
+   This is ENFORCED (not aspirational) by the merge-time check in
+   `tests/contracts/src/lib/immutability.ts`, exercised by
+   `tests/contracts/src/immutability.test.ts` (positive + tamper-negative units).
 3. Any `v>1` release requires a recorded bilateral acceptance
    (`acceptances/…/v<N>.json`) naming the producer and every affected consumer;
    a `breaking: true` version additionally requires a `supervisorException` ref.
@@ -30,3 +33,12 @@ tests/contracts/
 Command/event fixture envelopes are validated by
 `tests/contracts/src/fixture-validation.test.ts` against the immutable-event and
 retryable-command spine envelopes (see `src/lib/envelopes.ts`).
+
+## Deferred (documented, not claimed as implemented)
+
+- **Envelope directory-walk harness (OCR-006).** A dormant, empty-tolerant scan
+  of `fixtures/<owner>/<contract>/v<N>/fixtures/*.json` that validates every
+  payload against the owner/kind envelope guards is not implemented yet —
+  there are no released fixtures to walk. Add it in the story that introduces
+  the first released contract, alongside the `history/…/v<N>.sha256` committed
+  alongside that release.

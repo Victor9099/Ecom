@@ -1,14 +1,27 @@
-// Ecom — executable architecture boundaries (Story 1.2, AD-15 enforcement).
+// Ecom — executable architecture boundaries (Story 1.2 correction, AD-15
+// enforcement).
 //
 // dependency-cruiser 18.2.0 (exact pin). The root package.json is
 // "type": "module", so this config is CommonJS (.cjs).
 //
-// Matching semantics used below (verified against dependency-cruiser 18.2.0):
+// Matching semantics (verified empirically against dependency-cruiser 18.2.0
+// and this repo's pnpm layout):
 //   - `from.path`       is tested against the importing module's source path.
 //   - `to.path`/`to.pathNot` are tested against the dependency's *resolved*
-//     path (symlinks followed; pnpm real paths live under the .pnpm store).
+//     path. Resolution is NOT deterministic for the @ecom workspace packages:
+//       * when a @ecom package resolves (pnpm symlink followed), `resolved`
+//         is the real source path (modules/<m>/…, apps/…, platform/…);
+//       * when it does NOT resolve (this baseline has no per-package
+//         `exports`/`main` and no node_modules symlink until a consumer
+//         depends on it), `resolved` is the BARE package specifier — e.g.
+//         `@ecom/module-orders` or `@ecom/platform-database`.
+//     The forbidden rules below therefore match BOTH the real-source paths
+//     (`^modules/…`, `^apps/…`, `^platform/database/…`) AND the package-name
+//     forms (`@ecom/module-…`, `@ecom/<app>`, `@ecom/platform-database`), so a
+//     violation can never silently fail to match just because pnpm resolution
+//     changed.
 //   - Capture groups in `from.path` are made available in `to.path` /
-//     `to.pathNot` as `$1`, `$2`, … (NOT `\1` backreferences). A rule must
+//     `to.pathNot` as `$1`, `$2`, … (NOT backreferences). A rule must
 //     therefore use a single-string pattern (no arrays) when it uses `$N`.
 //   - `doNotFollow.path` and `exclude.path` both remove a path from the
 //     initial source scan; `doNotFollow.dependencyTypes` stops transitively
@@ -26,18 +39,22 @@ module.exports = {
   forbidden: [
     {
       // AD-1 / AD-16: a module may reach another module ONLY through its
-      // published contracts surface (modules/<m>/src/contracts/**). Same-module
-      // internal imports are out of scope here (governed by the hexagonal
-      // rules below); cross-module imports outside src/contracts are rejected.
+      // published contracts surface (modules/<m>/src/contracts/** — or the
+      // equivalent @ecom/module-<m>/src/contracts/** package subpath).
+      // Same-module internal imports are out of scope here (governed by the
+      // hexagonal rules below); cross-module imports outside src/contracts are
+      // rejected whether they are written as relative paths or package names.
       name: 'no-cross-module-internals',
       severity: 'error',
       comment:
-        'AD-1/AD-16: a bounded context may import another context only through modules/<m>/src/contracts/**. ' +
-        "Direct imports of another module's domain, application, adapter, or internal files fail the build.",
+        'AD-1/AD-16: a bounded context may import another context only through modules/<m>/src/contracts/** ' +
+        "(or @ecom/module-<m>/src/contracts/**). Direct imports of another module's domain, application, " +
+        'adapter, internal or barrel files — as relative paths or @ecom package names — fail the build.',
       from: { path: '^modules/([^/]+)/src/' },
       to: {
-        path: '^modules/[^/]+/src/',
-        pathNot: '(^modules/$1/src/|^modules/[^/]+/src/contracts/)',
+        path: '(^modules/[^/]+/src/|^@ecom/module-[^/]+)',
+        pathNot:
+          '(^modules/$1/src/|^@ecom/module-$1(/|$)|^modules/[^/]+/src/contracts/|^@ecom/module-[^/]+/src/contracts/)',
       },
     },
     {
@@ -45,17 +62,23 @@ module.exports = {
       // their published contracts surface.
       name: 'apps-reach-modules-via-contracts',
       severity: 'error',
-      comment: 'AD-1: apps/** may import a module only through modules/<m>/src/contracts/**.',
+      comment:
+        'AD-1: apps/** may import a module only through modules/<m>/src/contracts/** ' +
+        '(or @ecom/module-<m>/src/contracts/**).',
       from: { path: '^apps/[^/]+/' },
-      to: { path: '^modules/[^/]+/', pathNot: '^modules/[^/]+/src/contracts/' },
+      to: {
+        path: '(^modules/[^/]+/|^@ecom/module-[^/]+)',
+        pathNot: '(^modules/[^/]+/src/contracts/|^@ecom/module-[^/]+/src/contracts/)',
+      },
     },
     {
-      // Modules must not reach up into an application composition root.
+      // Modules must not reach up into an application composition root — via a
+      // relative path into apps/ or via the @ecom/<app> package name.
       name: 'no-module-imports-apps',
       severity: 'error',
-      comment: 'A bounded context must not import from an application (apps/**).',
+      comment: 'A bounded context must not import from an application (apps/** or @ecom/<app>).',
       from: { path: '^modules/[^/]+/' },
-      to: { path: '^apps/' },
+      to: { path: '(^apps/|^@ecom/(admin|api|storefront|worker)(/|$))' },
     },
     {
       // AD-2 / AD-25: the Prisma client, the pg driver adapter, and the
@@ -68,7 +91,7 @@ module.exports = {
         'AD-2/AD-25: @prisma/client, @prisma/adapter-pg and @ecom/platform-database may only be imported ' +
         'from modules/<m>/src/adapters/** or platform/database/**.',
       from: { pathNot: '(^modules/[^/]+/src/adapters/|^platform/database/)' },
-      to: { path: '(@prisma/(client|adapter-pg)|^platform/database/)' },
+      to: { path: '(@prisma/(client|adapter-pg)|^platform/database/|@ecom/platform-database)' },
     },
     {
       // AD-3 (hexagonal inward): domain is at the core and must not depend on
@@ -106,7 +129,7 @@ module.exports = {
       ],
     },
     exclude: {
-      path: '(^|/)(\\.next|\\.turbo|\\.cache|dist|generated|coverage|playwright-report|test-results|blob-report)(/|$)',
+      path: '(^|/)([.]next|[.]turbo|[.]cache|dist|generated|coverage|playwright-report|test-results|blob-report)(/|$)',
     },
     // No root tsconfig; the TypeScript parser is used without `paths` aliases.
     tsPreCompilationDeps: true,

@@ -41,7 +41,15 @@ export interface EventEnvelope {
   payload: unknown;
 }
 
-/** AD-3 / AD-25 idempotent, retryable command envelope. */
+/**
+ * AD-3 / AD-25 idempotent, retryable command envelope.
+ *
+ * AD-25 identity mapping note (OCR-008): the AD-25 identity is the tuple
+ * `(owner, commandType, callerOrSubject, key)`. This envelope uses `actor` as
+ * the stand-in for `callerOrSubject`; `idempotencyKey` (or `key`) is the
+ * retry/identity key. Field names are stabilised here and will not drift
+ * without a contract-level version change.
+ */
 export interface CommandEnvelope {
   owner: string;
   commandType: string;

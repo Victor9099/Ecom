@@ -1,3 +1,18 @@
+// AC2 enforcement ceiling (residual risk — honest statement, OCR-005).
+//
+// The cross-module query/mutation boundary is enforced TODAY only at:
+//   1. the import boundary (dependency-cruiser rule
+//      `no-prisma-client-outside-owner-adapters` + eslint
+//      `no-restricted-imports`), and
+//   2. the schema-prefix / ownership level (exactly one owner prefix per
+//      schema object; no cross-owner @relation/FK navigation).
+//
+// There is NO runtime table-level isolation yet, because no business tables
+// exist in this baseline (the Prisma schema carries only a generator and a
+// datasource). This check MUST be strengthened — to full table/row-level
+// ownership isolation — when the first models arrive. Until then this ceiling
+// is deliberately documented, not silently claimed as complete.
+
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
