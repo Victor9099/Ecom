@@ -47,7 +47,7 @@ FULL_TEST: COMMAND: pnpm verify
 TYPECHECK: COMMAND: pnpm typecheck
 LINT: COMMAND: pnpm lint
 FORMAT_CHECK: COMMAND: pnpm format:check
-INTEGRATION_TEST: NOT_APPLICABLE: Story 1.1 AC(1) forbids business tables and speculative domain entities, so there is no database or cross-process contract to integrate; process executability is proven by the smoke step in FULL_TEST (pnpm verify). Activate as COMMAND at Story 1.2.
+INTEGRATION_TEST: COMMAND: pnpm run architecture:check && pnpm run contracts:check
 
 TEST_COMMAND_ACTIVATION:
 - Story 1.1 must atomically replace every NOT_AVAILABLE_PRE_SCAFFOLD value when manifests and the lockfile land.
