@@ -1,5 +1,10 @@
-import type { AuditEntry } from '../../../../modules/governance/src/domain/audit-entry';
+import {
+  GENESIS_PREV_HASH,
+  type AuditEntry,
+} from '../../../../modules/governance/src/domain/audit-entry';
 import type {
+  AuditEntryAppendBuild,
+  AuditEntryAppendResult,
   AuditEntryStore,
   ListAuditEntriesPage,
   ListAuditEntriesQuery,
@@ -15,6 +20,9 @@ import type {
 export class InMemoryAuditEntryStore implements AuditEntryStore {
   private readonly entries: AuditEntry[] = [];
 
+  /** Serialises read-last + insert so concurrent appends cannot fork the chain (OCR-001). */
+  private readonly mutex = new AsyncMutex();
+
   async insertIfAbsent(entry: AuditEntry): Promise<{ inserted: boolean }> {
     const duplicate = this.entries.some(
       (existing) =>
@@ -26,6 +34,15 @@ export class InMemoryAuditEntryStore implements AuditEntryStore {
     }
     this.entries.push(entry);
     return { inserted: true };
+  }
+
+  async append(build: AuditEntryAppendBuild): Promise<AuditEntryAppendResult> {
+    return this.mutex.runExclusive(async () => {
+      const last = this.sortedDesc()[0] ?? null;
+      const entry = build(last?.entryHash ?? GENESIS_PREV_HASH);
+      const { inserted } = await this.insertIfAbsent(entry);
+      return { inserted, entry };
+    });
   }
 
   async findByIdempotency(producer: string, idempotencyKey: string): Promise<AuditEntry | null> {
@@ -83,4 +100,27 @@ function compareDesc(a: AuditEntry, b: AuditEntry): number {
     return a.auditEntryId < b.auditEntryId ? 1 : -1;
   }
   return 0;
+}
+
+/**
+ * A minimal promise-chain async mutex: each `runExclusive` waits for the
+ * previous critical section to release before running, so the in-memory store
+ * reproduces the advisory-lock serialisation of the Prisma adapter.
+ */
+class AsyncMutex {
+  private queue: Promise<void> = Promise.resolve();
+
+  async runExclusive<T>(fn: () => Promise<T> | T): Promise<T> {
+    const previous = this.queue;
+    let release!: () => void;
+    this.queue = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await previous;
+    try {
+      return await fn();
+    } finally {
+      release();
+    }
+  }
 }

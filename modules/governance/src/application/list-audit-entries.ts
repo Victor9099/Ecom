@@ -42,8 +42,11 @@ export class ListAuditEntriesQueryHandler {
     const limit = clampLimit(request.limit);
     const after = request.cursor ? decodeCursor(request.cursor) : null;
 
-    const { rows, count } = await this.store.list({
-      limit,
+    // OCR-005: fetch `limit + 1` rows so we can tell whether another page
+    // exists without emitting a trailing empty page when the result count is an
+    // exact multiple of `limit`.
+    const { rows: fetched, count } = await this.store.list({
+      limit: limit + 1,
       after,
       subjectType: request.subjectType,
       subjectId: request.subjectId,
@@ -54,8 +57,11 @@ export class ListAuditEntriesQueryHandler {
       correlationId: request.correlationId,
     });
 
+    const hasMore = fetched.length > limit;
+    const rows = hasMore ? fetched.slice(0, limit) : fetched;
+
     const nextCursor =
-      rows.length === limit && rows.length > 0
+      hasMore && rows.length > 0
         ? encodeCursor({
             occurredAt: rows[rows.length - 1]!.occurredAt,
             auditEntryId: rows[rows.length - 1]!.auditEntryId,

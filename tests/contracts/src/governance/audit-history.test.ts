@@ -63,6 +63,14 @@ function hashedFieldsOf(entry: AuditEntry): AuditEntryHashedFields {
   return fields;
 }
 
+function intakeIdentity(command: RecordAuditEntryCommand) {
+  return {
+    owner: command.owner,
+    commandType: command.commandType,
+    callerOrSubject: command.callerOrSubject,
+  };
+}
+
 describe('AuditEntry domain — UUIDv7 and sha256 chain primitives', () => {
   it('generates RFC 9562 UUIDv7 values (version 7, RFC 4122 variant)', () => {
     const id = uuidv7();
@@ -119,14 +127,29 @@ describe('AuditEntry domain — UUIDv7 and sha256 chain primitives', () => {
     expect(computeEntryHash({ ...base, detail: { changed: true } })).not.toBe(first.entryHash);
   });
 
-  it('derives a stable canonical request hash for intake (AD-25)', () => {
+  it('derives a stable canonical request hash bound to the AD-25 identity (OCR-002)', () => {
+    const identity = {
+      owner: 'governance',
+      commandType: 'RecordAuditEntry',
+      callerOrSubject: 'orders:order_1',
+    };
     const intake = makeIntake();
-    expect(computeIntakeRequestHash(intake)).toBe(computeIntakeRequestHash(makeIntake()));
-    expect(computeIntakeRequestHash(intake)).not.toBe(
-      computeIntakeRequestHash(makeIntake({ outcome: 'denied' })),
+    expect(computeIntakeRequestHash(intake, identity)).toBe(
+      computeIntakeRequestHash(makeIntake(), identity),
     );
-    expect(computeIntakeRequestHash(intake)).not.toBe(
-      computeIntakeRequestHash(makeIntake({ detail: { b: 2, a: 1 } })),
+    expect(computeIntakeRequestHash(intake, identity)).not.toBe(
+      computeIntakeRequestHash(makeIntake({ outcome: 'denied' }), identity),
+    );
+    expect(computeIntakeRequestHash(intake, identity)).not.toBe(
+      computeIntakeRequestHash(makeIntake({ detail: { b: 2, a: 1 } }), identity),
+    );
+    // OCR-002: the identity segment is bound into the hash — a different
+    // callerOrSubject or commandType changes the hash for the same intake.
+    expect(computeIntakeRequestHash(intake, identity)).not.toBe(
+      computeIntakeRequestHash(intake, { ...identity, callerOrSubject: 'catalog:sku-1' }),
+    );
+    expect(computeIntakeRequestHash(intake, identity)).not.toBe(
+      computeIntakeRequestHash(intake, { ...identity, commandType: 'OtherCommand' }),
     );
   });
 });
@@ -144,7 +167,9 @@ describe('RecordAuditEntry handler — append-only chain + AD-25 idempotency', (
       expect(result.event.eventType).toBe(AUDIT_ENTRY_RECORDED_EVENT_TYPE);
       expect(result.event.producer).toBe('governance');
       expect(result.event.aggregateId).toBe(result.entry.auditEntryId);
-      expect(result.requestHash).toBe(computeIntakeRequestHash(makeCommand().intake));
+      expect(result.requestHash).toBe(
+        computeIntakeRequestHash(makeCommand().intake, intakeIdentity(makeCommand())),
+      );
     }
   });
 
@@ -168,15 +193,16 @@ describe('RecordAuditEntry handler — append-only chain + AD-25 idempotency', (
     const store = new InMemoryAuditEntryStore();
     const handler = new RecordAuditEntryHandler(store);
     const first = await handler.recordAuditEntry(makeCommand());
-    const second = await handler.recordAuditEntry(
-      makeCommand({ intake: makeIntake({ outcome: 'denied' }) }),
-    );
+    const conflicting = makeCommand({ intake: makeIntake({ outcome: 'denied' }) });
+    const second = await handler.recordAuditEntry(conflicting);
 
     expect(first.status).toBe('recorded');
     expect(second.status).toBe('conflict');
     if (first.status === 'recorded' && second.status === 'conflict') {
       expect(second.storedHash).toBe(first.requestHash);
-      expect(second.receivedHash).toBe(computeIntakeRequestHash(makeIntake({ outcome: 'denied' })));
+      expect(second.receivedHash).toBe(
+        computeIntakeRequestHash(conflicting.intake, intakeIdentity(conflicting)),
+      );
       expect(second.reason).toBe('idempotency-hash-mismatch');
     }
     expect(store.list({ limit: 10, after: null })).resolves.toMatchObject({ count: 1 });
@@ -194,6 +220,99 @@ describe('RecordAuditEntry handler — append-only chain + AD-25 idempotency', (
       expect(second.entry.prevEntryHash).toBe(first.entry.entryHash);
       expect(second.entry.entryHash).toBe(computeEntryHash(hashedFieldsOf(second.entry)));
     }
+  });
+
+  it('serialises concurrent appends into ONE linear chain (OCR-001)', async () => {
+    const store = new InMemoryAuditEntryStore();
+    const handler = new RecordAuditEntryHandler(store);
+
+    const results = await Promise.all([
+      handler.recordAuditEntry(makeCommand({ key: 'race-a' })),
+      handler.recordAuditEntry(makeCommand({ key: 'race-b' })),
+      handler.recordAuditEntry(makeCommand({ key: 'race-c' })),
+    ]);
+    for (const result of results) {
+      expect(result.status).toBe('recorded');
+    }
+
+    const page = await store.list({ limit: 100, after: null });
+    const entries = page.rows;
+    expect(entries).toHaveLength(3);
+
+    // Follow prevEntryHash links (order-independent: concurrent same-ms UUIDv7
+    // values have no guaranteed sort). Exactly one head against the genesis
+    // sentinel, and one walk covers every entry — a fork would leave a stranded
+    // entry and a chain shorter than 3.
+    const byPrevEntryHash = new Map<string, AuditEntry>();
+    for (const entry of entries) {
+      byPrevEntryHash.set(entry.prevEntryHash, entry);
+    }
+    const heads = entries.filter((entry) => entry.prevEntryHash === GENESIS_PREV_HASH);
+    expect(heads).toHaveLength(1);
+
+    const chain: AuditEntry[] = [];
+    let next: AuditEntry | undefined = heads[0];
+    while (next !== undefined) {
+      chain.push(next);
+      next = byPrevEntryHash.get(next.entryHash);
+    }
+    expect(chain).toHaveLength(3);
+
+    // Single terminal entry: exactly one entryHash is referenced by nobody.
+    const referenced = new Set(entries.map((entry) => entry.prevEntryHash));
+    const terminals = entries.filter((entry) => !referenced.has(entry.entryHash));
+    expect(terminals).toHaveLength(1);
+    expect(terminals[0]!.entryHash).toBe(chain[chain.length - 1]!.entryHash);
+  });
+
+  it('conflicts (not replays) when a key is reused under a different callerOrSubject (OCR-002)', async () => {
+    const store = new InMemoryAuditEntryStore();
+    const handler = new RecordAuditEntryHandler(store);
+    const first = await handler.recordAuditEntry(makeCommand({ key: 'k' }));
+
+    const reuseUnderDifferentSubject = await handler.recordAuditEntry(
+      makeCommand({ key: 'k', callerOrSubject: 'catalog:sku-1' }),
+    );
+
+    expect(first.status).toBe('recorded');
+    expect(reuseUnderDifferentSubject.status).toBe('conflict');
+    expect(store.list({ limit: 10, after: null })).resolves.toMatchObject({ count: 1 });
+  });
+
+  it('rejects malformed input before any DB call with a structured failure (OCR-003)', async () => {
+    const store = new InMemoryAuditEntryStore();
+    const handler = new RecordAuditEntryHandler(store);
+
+    const notUtc = await handler.recordAuditEntry(
+      makeCommand({ intake: makeIntake({ occurredAt: '2026-08-27T15:30:00+07:00' }) }),
+    );
+    expect(notUtc.status).toBe('rejected');
+    if (notUtc.status === 'rejected') {
+      expect(notUtc.reason).toBe('invalid-command');
+      expect(notUtc.errors).toEqual([
+        'intake.occurredAt must be a UTC ISO-8601 instant ending in `Z`',
+      ]);
+      expect(notUtc.producer).toBe('orders');
+    }
+
+    const badOwner = await handler.recordAuditEntry({
+      ...makeCommand(),
+      owner: 'catalog',
+    } as unknown as RecordAuditEntryCommand);
+    expect(badOwner.status).toBe('rejected');
+
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    const badDetail = await handler.recordAuditEntry(
+      makeCommand({ intake: makeIntake({ detail: circular }) }),
+    );
+    expect(badDetail.status).toBe('rejected');
+    if (badDetail.status === 'rejected') {
+      expect(badDetail.errors.some((error) => error.includes('JSON-serializable'))).toBe(true);
+    }
+
+    // None of the rejected commands touched the store.
+    expect(store.list({ limit: 10, after: null })).resolves.toMatchObject({ count: 0 });
   });
 });
 
@@ -290,5 +409,33 @@ describe('ListAuditEntries query — pagination, count and chain digest', () => 
     const byActionClass = await query.handle({ actionClass: 'governance_audit_access' });
     expect(byActionClass.runningCount).toBe(1);
     expect(byActionClass.rows[0]!.actionClass).toBe('governance_audit_access');
+  });
+
+  it('does not emit a trailing empty page when count is an exact multiple of limit (OCR-005)', async () => {
+    const store = new InMemoryAuditEntryStore();
+    const handler = new RecordAuditEntryHandler(store);
+    const times = [
+      '2026-08-27T15:00:00.000Z',
+      '2026-08-27T15:10:00.000Z',
+      '2026-08-27T15:20:00.000Z',
+      '2026-08-27T15:30:00.000Z',
+    ];
+    for (let i = 0; i < times.length; i += 1) {
+      const result = await handler.recordAuditEntry(
+        makeCommand({ key: `k${i}`, intake: makeIntake({ occurredAt: times[i]! }) }),
+      );
+      expect(result.status).toBe('recorded');
+    }
+
+    const query = new ListAuditEntriesQueryHandler(store);
+    const page1 = await query.handle({ limit: 2 });
+    expect(page1.rows).toHaveLength(2);
+    expect(page1.runningCount).toBe(4);
+    expect(page1.nextCursor).not.toBeNull();
+
+    const page2 = await query.handle({ limit: 2, cursor: page1.nextCursor ?? undefined });
+    expect(page2.rows).toHaveLength(2);
+    expect(page2.runningCount).toBe(4);
+    expect(page2.nextCursor).toBeNull();
   });
 });

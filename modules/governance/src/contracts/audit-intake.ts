@@ -32,7 +32,7 @@ export interface RecordAuditEntryCommand {
   intake: AuditEntryIntake;
 }
 
-export type RecordAuditEntryStatus = 'recorded' | 'replayed' | 'conflict';
+export type RecordAuditEntryStatus = 'recorded' | 'replayed' | 'conflict' | 'rejected';
 
 export interface RecordAuditEntrySuccess {
   status: 'recorded' | 'replayed';
@@ -52,7 +52,17 @@ export interface RecordAuditEntryConflict {
   reason: 'idempotency-hash-mismatch';
 }
 
-export type RecordAuditEntryResult = RecordAuditEntrySuccess | RecordAuditEntryConflict;
+export interface RecordAuditEntryRejected {
+  status: 'rejected';
+  /** Producer from the intake when it was parseable, else null. */
+  producer: string | null;
+  reason: 'invalid-command';
+  /** Human-readable validation failures (OCR-003). */
+  errors: string[];
+}
+
+export type RecordAuditEntryResult =
+  RecordAuditEntrySuccess | RecordAuditEntryConflict | RecordAuditEntryRejected;
 
 export interface GovernanceAuditEntryRecordedEvent {
   eventId: string;

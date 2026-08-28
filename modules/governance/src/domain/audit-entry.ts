@@ -163,8 +163,13 @@ type SourceFactFields = Pick<
   | 'detail'
 >;
 
-/** Canonical serialisation of the source-fact fields (fixed order, unit-separator delimited). */
-function canonicalSourceFactFields(source: SourceFactFields): string {
+/**
+ * Ordered source-fact values (null-normalised) in a fixed, stable sequence.
+ * Callers serialise this array with `stableStringify` (OCR-004): JSON array
+ * syntax length-prefixes every element, so field contents can never collide
+ * with a separator the way a bare U+001F delimiter join could.
+ */
+function sourceFactFields(source: SourceFactFields): unknown[] {
   return [
     source.actorType,
     source.actorId,
@@ -179,21 +184,28 @@ function canonicalSourceFactFields(source: SourceFactFields): string {
     source.correlationId,
     source.causationId,
     source.producer,
-    source.commandId ?? '',
-    source.eventId ?? '',
+    source.commandId ?? null,
+    source.eventId ?? null,
     source.schemaVersion,
-    stableStringify(source.detail ?? null),
-  ].join('\u001f');
+    source.detail ?? null,
+  ];
+}
+
+/** AD-25 identity segment bound into the canonical request hash (OCR-002). */
+export interface AuditIntakeIdentity {
+  owner: string;
+  commandType: string;
+  callerOrSubject: string;
 }
 
 /** Canonical serialisation of all hashed entry fields (prev hash + identity + source facts). */
 export function canonicalAuditEntryFields(fields: AuditEntryHashedFields): string {
-  return [
+  return stableStringify([
     fields.prevEntryHash,
     fields.idempotencyKey,
     fields.idempotencyHash,
-    canonicalSourceFactFields(fields),
-  ].join('\u001f');
+    ...sourceFactFields(fields),
+  ]);
 }
 
 export function computeEntryHash(fields: AuditEntryHashedFields): string {
@@ -201,13 +213,24 @@ export function computeEntryHash(fields: AuditEntryHashedFields): string {
 }
 
 /**
- * The AD-25 canonical request hash for an intake: a deterministic sha256 of the
- * source-fact fields. The same hash replayed under the same idempotency key
- * reproduces the original result; the same key with a different hash is a
- * stable conflict.
+ * The AD-25 canonical request hash: a deterministic sha256 over the full
+ * command identity (owner, commandType, callerOrSubject) PLUS the intake source
+ * facts (OCR-002). The same hash replayed under the same idempotency key
+ * reproduces the original result; the same key with a different hash —
+ * including a different callerOrSubject or commandType — is a stable conflict.
  */
-export function computeIntakeRequestHash(intake: AuditEntryIntake): string {
-  return sha256Hex(canonicalSourceFactFields(intake));
+export function computeIntakeRequestHash(
+  intake: AuditEntryIntake,
+  identity: AuditIntakeIdentity,
+): string {
+  return sha256Hex(
+    stableStringify([
+      identity.owner,
+      identity.commandType,
+      identity.callerOrSubject,
+      ...sourceFactFields(intake),
+    ]),
+  );
 }
 
 /** Materialises an append-only `AuditEntry` from its hashed fields. */
@@ -232,4 +255,31 @@ export function isAuditOutcome(value: unknown): value is AuditOutcome {
 
 export function isActorType(value: unknown): value is ActorType {
   return typeof value === 'string' && (ACTOR_TYPES as readonly string[]).includes(value);
+}
+
+/** True when `value` is a UTC ISO-8601 instant with an explicit `Z` (no offset). */
+export function isUtcIso8601Z(value: unknown): boolean {
+  return (
+    typeof value === 'string' &&
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/.test(value) &&
+    !Number.isNaN(Date.parse(value))
+  );
+}
+
+/**
+ * True when `value` round-trips through `JSON.stringify` (OCR-003). Catches
+ * circular references and `BigInt` (both throw), plus top-level
+ * `undefined`/function/symbol, which are not representable JSON values for the
+ * `jsonb` detail column.
+ */
+export function isJsonSerializable(value: unknown): boolean {
+  if (value === undefined || typeof value === 'function' || typeof value === 'symbol') {
+    return false;
+  }
+  try {
+    JSON.stringify(value);
+    return true;
+  } catch {
+    return false;
+  }
 }

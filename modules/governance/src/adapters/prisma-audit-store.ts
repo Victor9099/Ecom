@@ -1,6 +1,14 @@
 import { Prisma, type PrismaClient } from '../../../../platform/database/generated/prisma/client';
-import type { AuditEntry, ActorType, AuditActionClass, AuditOutcome } from '../domain/audit-entry';
+import {
+  GENESIS_PREV_HASH,
+  type AuditEntry,
+  type ActorType,
+  type AuditActionClass,
+  type AuditOutcome,
+} from '../domain/audit-entry';
 import type {
+  AuditEntryAppendBuild,
+  AuditEntryAppendResult,
   AuditEntryStore,
   ListAuditEntriesPage,
   ListAuditEntriesQuery,
@@ -21,6 +29,13 @@ import type {
  */
 
 type AuditablePrismaClient = Pick<PrismaClient, 'governance_AuditEntry' | '$executeRaw'>;
+
+/**
+ * Fixed advisory-lock key serialising the governance audit chain (OCR-001).
+ * Any stable unique constant works; it only needs to be distinct from other
+ * advisory locks in the same database.
+ */
+const GOVERNANCE_AUDIT_CHAIN_LOCK_KEY = 733_498_201;
 
 interface GovernanceAuditEntryRow {
   auditEntryId: string;
@@ -74,44 +89,68 @@ function mapRow(row: GovernanceAuditEntryRow): AuditEntry {
   };
 }
 
+/** Shared `INSERT ... ON CONFLICT DO NOTHING` used by both create paths. */
+function insertEntryIfAbsent(client: AuditablePrismaClient, entry: AuditEntry): Promise<number> {
+  return client.$executeRaw(Prisma.sql`
+    INSERT INTO "governance_AuditEntry" (
+      "auditEntryId", "prevEntryHash", "entryHash", "actorType", "actorId",
+      "occurredAt", "subjectType", "subjectId", "actionClass", "action",
+      "reasonCode", "reason", "outcome", "correlationId", "causationId",
+      "producer", "commandId", "eventId", "idempotencyKey", "idempotencyHash",
+      "schemaVersion", "detail"
+    ) VALUES (
+      ${entry.auditEntryId}::uuid,
+      ${entry.prevEntryHash},
+      ${entry.entryHash},
+      ${entry.actorType}::"governance_ActorType",
+      ${entry.actorId},
+      ${entry.occurredAt},
+      ${entry.subjectType},
+      ${entry.subjectId},
+      ${entry.actionClass}::"governance_AuditActionClass",
+      ${entry.action},
+      ${entry.reasonCode},
+      ${entry.reason},
+      ${entry.outcome}::"governance_AuditOutcome",
+      ${entry.correlationId},
+      ${entry.causationId},
+      ${entry.producer},
+      ${entry.commandId},
+      ${entry.eventId},
+      ${entry.idempotencyKey},
+      ${entry.idempotencyHash},
+      ${entry.schemaVersion},
+      ${JSON.stringify(entry.detail ?? null)}::jsonb
+    )
+    ON CONFLICT ("producer", "idempotencyKey") DO NOTHING
+  `);
+}
+
 export class PrismaAuditEntryStore implements AuditEntryStore {
   constructor(private readonly client: AuditablePrismaClient) {}
 
   async insertIfAbsent(entry: AuditEntry): Promise<{ inserted: boolean }> {
-    const affected = await this.client.$executeRaw(Prisma.sql`
-      INSERT INTO "governance_AuditEntry" (
-        "auditEntryId", "prevEntryHash", "entryHash", "actorType", "actorId",
-        "occurredAt", "subjectType", "subjectId", "actionClass", "action",
-        "reasonCode", "reason", "outcome", "correlationId", "causationId",
-        "producer", "commandId", "eventId", "idempotencyKey", "idempotencyHash",
-        "schemaVersion", "detail"
-      ) VALUES (
-        ${entry.auditEntryId}::uuid,
-        ${entry.prevEntryHash},
-        ${entry.entryHash},
-        ${entry.actorType}::"governance_ActorType",
-        ${entry.actorId},
-        ${entry.occurredAt},
-        ${entry.subjectType},
-        ${entry.subjectId},
-        ${entry.actionClass}::"governance_AuditActionClass",
-        ${entry.action},
-        ${entry.reasonCode},
-        ${entry.reason},
-        ${entry.outcome}::"governance_AuditOutcome",
-        ${entry.correlationId},
-        ${entry.causationId},
-        ${entry.producer},
-        ${entry.commandId},
-        ${entry.eventId},
-        ${entry.idempotencyKey},
-        ${entry.idempotencyHash},
-        ${entry.schemaVersion},
-        ${JSON.stringify(entry.detail ?? null)}::jsonb
-      )
-      ON CONFLICT ("producer", "idempotencyKey") DO NOTHING
-    `);
+    const affected = await insertEntryIfAbsent(this.client, entry);
     return { inserted: affected === 1 };
+  }
+
+  async append(build: AuditEntryAppendBuild): Promise<AuditEntryAppendResult> {
+    // OCR-001: `pg_advisory_xact_lock` is transaction-scoped — it is held until
+    // the enclosing transaction commits or rolls back. The AuditIntakePort runs
+    // inside the producer's synchronous transaction (AD-3 mandatory intake),
+    // and this adapter is constructed from that transaction's client, so the
+    // read-last + insert below are serialised across concurrent producers and
+    // the chain cannot fork. (A standalone client must wrap this in its own
+    // transaction for the lock to span the read + insert.)
+    await this.client.$executeRaw(
+      Prisma.sql`SELECT pg_advisory_xact_lock(${GOVERNANCE_AUDIT_CHAIN_LOCK_KEY})`,
+    );
+    const lastRow = await this.client.governance_AuditEntry.findFirst({
+      orderBy: [{ occurredAt: 'desc' }, { auditEntryId: 'desc' }],
+    });
+    const entry = build(lastRow?.entryHash ?? GENESIS_PREV_HASH);
+    const affected = await insertEntryIfAbsent(this.client, entry);
+    return { inserted: affected === 1, entry };
   }
 
   async findByIdempotency(producer: string, idempotencyKey: string): Promise<AuditEntry | null> {
