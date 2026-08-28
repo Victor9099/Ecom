@@ -2,10 +2,17 @@
   "name": "@ecom/module-governance",
   "version": "0.1.0",
   "private": true,
-  "description": "Governance bounded context (empty scaffold, Story 1.1).",
+  "description": "Governance bounded context: append-only audit history, RBAC, privacy, retention, and policy versioning (Story 1.5).",
   "scripts": {
     "build": "tsc -p tsconfig.json --noEmit",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint ."
+  },
+  "dependencies": {
+    "@ecom/platform-database": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "typescript": "6.0.3"
   }
 }

@@ -182,7 +182,18 @@ importers:
 
   modules/fulfillment: {}
 
-  modules/governance: {}
+  modules/governance:
+    dependencies:
+      '@ecom/platform-database':
+        specifier: workspace:*
+        version: link:../../platform/database
+    devDependencies:
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
 
   modules/identity: {}
 

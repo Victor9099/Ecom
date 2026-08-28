@@ -94,7 +94,7 @@ function makeTempContract(options?: {
 }
 
 describe('AC3 sha256 immutability — merge-time check (OCR-003)', () => {
-  it('passes dormant-safe on the real (empty) manifest — a real no-op, not a skip', () => {
+  it('verifies the real released record-audit-entry/v1 contract immutability (not a skip)', () => {
     const raw = readFileSync(path.join(contractsRoot, 'manifest.json'), 'utf8');
     const manifest = JSON.parse(raw) as ContractManifest;
 

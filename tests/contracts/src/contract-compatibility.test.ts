@@ -40,14 +40,24 @@ describe('Story 1.2 contract compatibility (AC3) — registry', () => {
     expect(existsSync(historyDir)).toBe(true);
   });
 
-  it('the manifest starts EMPTY (nothing released yet — real AC5 assertion)', () => {
+  it('the manifest declares exactly the released record-audit-entry/v1 contract', () => {
     const raw = readFileSync(manifestPath, 'utf8');
     const manifest = JSON.parse(raw) as unknown;
 
     expect(validateManifestShape(manifest)).toEqual([]);
     const contracts = (manifest as ContractManifest).contracts;
-    expect(Array.isArray(contracts)).toBe(true);
-    expect(contracts).toEqual([]);
+    expect(contracts).toEqual([
+      {
+        owner: 'governance',
+        contract: 'record-audit-entry',
+        version: 'v1',
+        kind: 'command',
+        consumers: ['content', 'catalog', 'payments', 'finance', 'identity', 'governance'],
+      },
+    ]);
+    for (const entry of contracts) {
+      expect(validateContractEntry(entry)).toEqual([]);
+    }
   });
 
   it('resolves versioned fixture/history/acceptance paths from a contract entry', () => {

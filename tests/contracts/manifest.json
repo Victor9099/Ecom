@@ -1,4 +1,12 @@
 {
   "version": 1,
-  "contracts": []
+  "contracts": [
+    {
+      "owner": "governance",
+      "contract": "record-audit-entry",
+      "version": "v1",
+      "kind": "command",
+      "consumers": ["content", "catalog", "payments", "finance", "identity", "governance"]
+    }
+  ]
 }

@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ecom.local/contracts/governance/record-audit-entry/v1",
+  "title": "RecordAuditEntry command (v1)",
+  "type": "object",
+  "required": [
+    "owner",
+    "commandType",
+    "schemaVersion",
+    "callerOrSubject",
+    "key",
+    "actor",
+    "correlationId",
+    "causationId",
+    "time",
+    "intake"
+  ],
+  "properties": {
+    "owner": { "const": "governance" },
+    "commandType": { "const": "RecordAuditEntry" },
+    "schemaVersion": { "const": "v1" },
+    "callerOrSubject": { "type": "string" },
+    "key": { "type": "string" },
+    "actor": { "type": "string" },
+    "correlationId": { "type": "string" },
+    "causationId": { "type": "string" },
+    "time": { "type": "string" },
+    "intake": { "$ref": "#/$defs/intake" }
+  },
+  "$defs": {
+    "intake": {
+      "type": "object",
+      "required": [
+        "producer",
+        "actorType",
+        "actorId",
+        "occurredAt",
+        "subjectType",
+        "subjectId",
+        "actionClass",
+        "action",
+        "reasonCode",
+        "reason",
+        "outcome",
+        "correlationId",
+        "causationId",
+        "schemaVersion"
+      ],
+      "properties": {
+        "producer": { "type": "string" },
+        "actorType": { "enum": ["human", "service", "system"] },
+        "actorId": { "type": "string" },
+        "occurredAt": { "type": "string" },
+        "subjectType": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "actionClass": {
+          "enum": [
+            "governance_content_publication",
+            "governance_content_withdrawal",
+            "governance_sku_classification",
+            "governance_reconciliation",
+            "governance_refund_execution",
+            "governance_regulatory_hold",
+            "governance_permission_change",
+            "governance_audit_access"
+          ]
+        },
+        "action": { "type": "string" },
+        "reasonCode": { "type": "string" },
+        "reason": { "type": "string" },
+        "outcome": { "enum": ["success", "failure", "denied"] },
+        "correlationId": { "type": "string" },
+        "causationId": { "type": "string" },
+        "commandId": { "type": ["string", "null"] },
+        "eventId": { "type": ["string", "null"] },
+        "schemaVersion": { "type": "string" },
+        "detail": {}
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "owner": "governance",
+  "commandType": "RecordAuditEntry",
+  "schemaVersion": "v1",
+  "callerOrSubject": "orders:order_01J3Z0E7A00000000000000001",
+  "key": "orders-publish-01J3Z0E7A00000000000000002",
+  "actor": "system:checkout",
+  "correlationId": "01J3Z0E7A00000000000000003",
+  "causationId": "01J3Z0E7A00000000000000004",
+  "time": "2026-08-27T15:30:00.000Z",
+  "intake": {
+    "producer": "orders",
+    "actorType": "service",
+    "actorId": "checkout",
+    "occurredAt": "2026-08-27T15:29:59.500Z",
+    "subjectType": "order",
+    "subjectId": "01J3Z0E7A00000000000000001",
+    "actionClass": "governance_refund_execution",
+    "action": "refund-approved",
+    "reasonCode": "FULL_REFUND_POLICY",
+    "reason": "Approved pre-fulfillment cancellation refund",
+    "outcome": "success",
+    "correlationId": "01J3Z0E7A00000000000000003",
+    "causationId": "01J3Z0E7A00000000000000004",
+    "commandId": "01J3Z0E7A00000000000000005",
+    "eventId": null,
+    "schemaVersion": "v1",
+    "detail": {
+      "refundAmountMinor": 675000,
+      "currency": "VND"
+    }
+  }
+}

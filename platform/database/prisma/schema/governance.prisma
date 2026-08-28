@@ -1,0 +1,66 @@
+// Governance module schema — Story 1.5 "Append-only Audit History" (AD-2 / AD-11 / AD-25).
+//
+// Append-only evidence store: the Governance application layer publishes ONLY
+// create + read paths for `governance_AuditEntry`; no update/delete codepath
+// exists anywhere in the module. Corrections are NEW entries, never edits.
+//
+// Enums are additive-only (AD-25 expand/migrate/contract): never rename or
+// remove an existing value. Cross-boundary identities (actorId, subjectId,
+// correlationId, causationId, commandId, eventId, producer) are plain scalars
+// with NO foreign keys, per AD-2 ("cross-boundary references are UUIDv7 values
+// without ORM navigation").
+
+enum governance_AuditActionClass {
+  governance_content_publication // FR-2
+  governance_content_withdrawal // FR-6
+  governance_sku_classification // FR-9
+  governance_reconciliation // FR-29
+  governance_refund_execution // FR-35
+  governance_regulatory_hold // FR-36
+  governance_permission_change // FR-41
+  governance_audit_access // FR-42
+}
+
+enum governance_AuditOutcome {
+  success
+  failure
+  denied
+}
+
+enum governance_ActorType {
+  human
+  service
+  system
+}
+
+model governance_AuditEntry {
+  auditEntryId    String                      @id @db.Uuid
+  prevEntryHash   String
+  entryHash       String
+  actorType       governance_ActorType
+  actorId         String
+  occurredAt      String
+  subjectType     String
+  subjectId       String
+  actionClass     governance_AuditActionClass
+  action          String
+  reasonCode      String
+  reason          String
+  outcome         governance_AuditOutcome
+  correlationId   String
+  causationId     String
+  producer        String
+  commandId       String?
+  eventId         String?
+  idempotencyKey  String
+  idempotencyHash String
+  schemaVersion   String
+  detail          Json?
+
+  @@unique([producer, idempotencyKey])
+  @@index([occurredAt, auditEntryId])
+  @@index([subjectType, subjectId])
+  @@index([correlationId])
+  @@index([actorType, actorId])
+  @@index([actionClass, occurredAt])
+}

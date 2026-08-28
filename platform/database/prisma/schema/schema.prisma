@@ -1,0 +1,22 @@
+// Ecom platform database schema — Story 1.1 + Story 1.5 (per-module split, AD-2 / AD-25).
+//
+// This is the SINGLE platform-owned anchor file: it carries ONLY the Prisma
+// generator and the PostgreSQL datasource. Module-owned object definitions
+// (enums/models/views/composite types) live in owner-named *.prisma files in
+// this folder, e.g. `governance.prisma`. Prisma 7.10.0's `schema` config accepts
+// a folder and recursively searches it for `*.prisma` files (verified against
+// @prisma/config@7.10.0 — folder mode is GA, no preview flag required).
+//
+// The generated client output path is relative to this anchor file:
+//   platform/database/prisma/schema/  ->  ../../  ->  platform/database/
+// so `output = "../../generated/prisma"` lands exactly where Story 1.1 placed it
+// (platform/database/generated/prisma, gitignored).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}

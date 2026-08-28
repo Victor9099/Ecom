@@ -1,17 +1,16 @@
 // AC2 enforcement ceiling (residual risk — honest statement, OCR-005).
 //
-// The cross-module query/mutation boundary is enforced TODAY only at:
+// The cross-module query/mutation boundary is enforced TODAY at:
 //   1. the import boundary (dependency-cruiser rule
 //      `no-prisma-client-outside-owner-adapters` + eslint
 //      `no-restricted-imports`), and
 //   2. the schema-prefix / ownership level (exactly one owner prefix per
 //      schema object; no cross-owner @relation/FK navigation).
 //
-// There is NO runtime table-level isolation yet, because no business tables
-// exist in this baseline (the Prisma schema carries only a generator and a
-// datasource). This check MUST be strengthened — to full table/row-level
-// ownership isolation — when the first models arrive. Until then this ceiling
-// is deliberately documented, not silently claimed as complete.
+// Story 1.5 adds the first business table (governance_AuditEntry): this file
+// now advances from the Story 1.2 "zero models" state to the sanctioned
+// `governance_*` model + enum set, still enforcing the same AD-2 / AD-25 rules
+// for real (never skipping).
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
@@ -30,9 +29,9 @@ const repoRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '..'
 const PRISMA_DIR = path.join(repoRoot, 'platform', 'database', 'prisma');
 
 /**
- * Reads every `.prisma` file under platform/database/prisma, tolerating the
- * future multi-file layout (platform/database/prisma/schema/*.prisma) described
- * by AD-25 without creating it today.
+ * Reads every `.prisma` file under platform/database/prisma, including the
+ * Story 1.5 multi-file layout (platform/database/prisma/schema/*.prisma) that
+ * AD-25 / the Prisma 7 folder-discovery mode enable.
  */
 function readPrismaSources(): { fileName: string; source: string }[] {
   const collect = (dir: string): string[] => {
@@ -52,20 +51,44 @@ function readPrismaSources(): { fileName: string; source: string }[] {
     .sort((a, b) => a.fileName.localeCompare(b.fileName));
 }
 
-describe('Story 1.2 schema ownership (AD-2 / AD-25)', () => {
-  it('declares ZERO model blocks today (real AC5 assertion, not a skip)', () => {
+describe('Story 1.5 schema ownership (AD-2 / AD-25)', () => {
+  it('declares exactly the sanctioned governance_* model and enum set (real assertion)', () => {
     const sources = readPrismaSources();
     expect(sources.length).toBeGreaterThan(0);
 
-    const allModels = sources
-      .flatMap(({ source }) => parsePrismaBlocks(source))
-      .filter((b) => b.kind === 'model');
-    expect(allModels.map((m) => m.name)).toEqual([]);
+    const blocks = sources.flatMap(({ source }) => parsePrismaBlocks(source));
+    const modelNames = blocks.filter((b) => b.kind === 'model').map((b) => b.name);
+    const enumNames = blocks.filter((b) => b.kind === 'enum').map((b) => b.name);
+    const typeNames = blocks.filter((b) => b.kind === 'type').map((b) => b.name);
+    const viewNames = blocks.filter((b) => b.kind === 'view').map((b) => b.name);
 
-    // The baseline still carries the datasource + generator only.
+    expect(modelNames).toEqual(['governance_AuditEntry']);
+    expect([...enumNames].sort()).toEqual([
+      'governance_ActorType',
+      'governance_AuditActionClass',
+      'governance_AuditOutcome',
+    ]);
+    expect(typeNames).toEqual([]);
+    expect(viewNames).toEqual([]);
+
+    // The platform-owned anchor still carries exactly ONE generator + datasource.
     const combined = sources.map((s) => s.source).join('\n');
-    expect(combined).toMatch(/datasource\s+db\s*{/);
-    expect(combined).toMatch(/generator\s+client\s*{/);
+    expect(combined.split('datasource db {').length - 1).toBe(1);
+    expect(combined.split('generator client {').length - 1).toBe(1);
+  });
+
+  it('keeps the AuditEntry model append-only scalar-shaped (no @relation navigation)', () => {
+    const sources = readPrismaSources();
+    const governance = sources.find(({ fileName }) => fileName.endsWith('governance.prisma'));
+    expect(governance).toBeDefined();
+    const model = parsePrismaBlocks(governance!.source).find(
+      (b) => b.name === 'governance_AuditEntry',
+    );
+    expect(model).toBeDefined();
+    // Append-only: no @relation / FK navigation on the audit entry (AD-2).
+    expect(model!.body).not.toMatch(/@relation/);
+    // The idempotency unique constraint is present (AD-25).
+    expect(model!.body.includes('@@unique([producer, idempotencyKey])')).toBe(true);
   });
 
   it('enforces exactly one owner-prefixed module per schema object (AD-2)', () => {
